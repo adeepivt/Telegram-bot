@@ -1,65 +1,70 @@
-from django.shortcuts import render
+from django.views import generic
+from django.views.decorators.csrf import csrf_exempt
 import json
-import os
-
 import requests
-from django.http import JsonResponse
-from django.views import View
-from decouple import config 
+import random
+from django.utils.decorators import method_decorator
+from django.http.response import HttpResponse
 
-# from .models import tb_tutorial_collection
 # Create your views here.
 
 
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN')
-TELEGRAM_URL = "https://api.telegram.org/bot"
 
-class TutorialBotView(View):
+def get_message_from_request(request):
+
+    received_message = {}
+    decoded_request = json.loads(request.body.decode('utf-8'))
+
+    if 'message' in decoded_request:
+        received_message = decoded_request['message'] 
+        received_message['chat_id'] = received_message['from']['id'] # simply for easier reference
+        # print(received_message.keys())
+    return received_message
+
+def send_messages(message, token):
+    # Ideally process message in some way. For now, let's just respond
+    jokes = {
+         'stupid': ["""Yo' Mama is so stupid, she needs a recipe to make ice cubes.""",
+                    """Yo' Mama is so stupid, she thinks DNA is the National Dyslexics Association."""],
+         'fat':    ["""Yo' Mama is so fat, when she goes to a restaurant, instead of a menu, she gets an estimate.""",
+                    """ Yo' Mama is so fat, when the cops see her on a street corner, they yell, "Hey you guys, break it up!" """],
+         'dumb':   ["""THis is fun""",
+                    """THis isn't fun"""] 
+    }
+
+    post_message_url = "https://api.telegram.org/bot{0}/sendMessage".format(token)
+
+    result_message = {}         # the response needs to contain just a chat_id and text field for  telegram to accept it
+    result_message['chat_id'] = message['chat_id']
+    if 'fat' in message['text']:
+        result_message['text'] = random.choice(jokes['fat'])
+
+    elif 'stupid' in message['text']:
+        result_message['text'] = random.choice(jokes['stupid'])
+
+    elif 'dumb' in message['text']:
+        result_message['text'] = random.choice(jokes['dumb'])
+
+    else:
+        result_message['text'] = "I don't know any responses for that. If you're interested in yo mama jokes tell me fat, stupid or dumb."
+
+    response_msg = json.dumps(result_message)
+    status = requests.post(post_message_url, headers={
+        "Content-Type": "application/json"}, data=response_msg)
+
+
+class TelegramBotView(generic.View):
+
+    # csrf_exempt is necessary because the request comes from the Telegram server.
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return generic.View.dispatch(self, request, *args, **kwargs)
+
+
+    # Post function to handle messages in whatever format they come
     def post(self, request, *args, **kwargs):
-        t_data = json.loads(request.body)
-        t_message = t_data["message"]
-        t_chat = t_message["chat"]
+        message = get_message_from_request(request)
+        send_messages(message, TELEGRAM_BOT_TOKEN)
 
-        try:
-            text = t_message["text"].strip().lower()
-        except Exception as e:
-            return JsonResponse({"ok": "POST request processed"})
-
-        text = text.lstrip("/")
-        chat = tb_tutorial_collection.find_one({"chat_id": t_chat["id"]})
-        if not chat:
-            chat = {
-                "chat_id": t_chat["id"],
-                "counter": 0
-            }
-            response = tb_tutorial_collection.insert_one(chat)
-            # we want chat obj to be the same as fetched from collection
-            chat["_id"] = response.inserted_id
-
-        if text == "+":
-            chat["counter"] += 1
-            tb_tutorial_collection.save(chat)
-            msg = f"Number of '+' messages that were parsed: {chat['counter']}"
-            self.send_message(msg, t_chat["id"])
-        elif text == "restart":
-            blank_data = {"counter": 0}
-            chat.update(blank_data)
-            tb_tutorial_collection.save(chat)
-            msg = "The Tutorial bot was restarted"
-            self.send_message(msg, t_chat["id"])
-        else:
-            msg = "Unknown command"
-            self.send_message(msg, t_chat["id"])
-
-        return JsonResponse({"ok": "POST request processed"})
-
-    @staticmethod
-    def send_message(message, chat_id):
-        data = {
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "Markdown",
-        }
-        response = requests.post(
-            f"{TELEGRAM_URL}{TELEGRAM_BOT_TOKEN}/sendMessage", data=data
-        )
+        return HttpResponse()
