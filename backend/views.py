@@ -5,6 +5,8 @@ import requests
 import random
 from django.utils.decorators import method_decorator
 from django.http.response import HttpResponse
+from decouple import config
+from .models import Tgbot
 
 # Create your views here.
 
@@ -19,7 +21,22 @@ def get_message_from_request(request):
     if 'message' in decoded_request:
         received_message = decoded_request['message'] 
         received_message['chat_id'] = received_message['from']['id'] # simply for easier reference
-        # print(received_message.keys())
+        print(received_message.keys())
+        text = received_message['text']
+
+        if text in ['fat','stupid','dumb']:
+            user_id = received_message['chat_id']
+            obj,created = Tgbot.objects.get_or_create(user_id=user_id)
+            if text == 'fat':
+                obj.fat += 1
+                obj.save()
+            elif text == 'stupid':
+                obj.stupid += 1
+                obj.save()
+            elif text == 'dumb':
+                obj.dumb += 1
+                obj.save()
+    print('recieved',received_message,'\n decided',decoded_request.keys(),decoded_request['update_id'])
     return received_message
 
 def send_messages(message, token):
