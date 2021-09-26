@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- Latest compiled and minified CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<style>
+    body {
+        padding-top: 3em;
+    }
+</style>
+
+<body>
+    <div class="container">
+        <div class="row">
+                <div class="col-sm-8">
+                    <table class="table caption-top">
+                        <caption><h4>List of Users</h4></caption>
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Username</th>
+                                <th scope="col">Fat</th>
+                                <th scope="col">Stupid</th>
+                                <th scope="col">Dumb</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for obj in data  %}
+                            <tr>
+                                <th scope="row">  {{ forloop.counter }}</th>
+                                <td>{{obj.username}}</td>
+                                <td>{{obj.fat}}</td>
+                                <td>{{obj.stupid}}</td>
+                                <td>{{obj.dumb}}</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                    </table>
+                </div>
+
+                <div class="col-sm-4">
+                    <table class="table table table-sm caption-top">
+                        <caption><h4>Total count</h4></caption>
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Command</th>
+                                <th scope="col">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for obj in count  %}
+                            <tr>
+                                <th scope="row">{{ forloop.counter }}</th>
+                                <td>{{obj.command_name | title }}</td>
+                                <td>{{obj.count}}</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                    </table>
+                </div>
+          </div>
+    </div>
+</body>
+</html>

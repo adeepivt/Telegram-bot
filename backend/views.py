@@ -1,4 +1,5 @@
 from django.views import generic
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
@@ -6,7 +7,8 @@ import random
 from django.utils.decorators import method_decorator
 from django.http.response import HttpResponse
 from decouple import config
-from .models import Tgbot
+from .models import Tgbot, Command
+from django.db.models import F
 
 # Create your views here.
 
@@ -21,22 +23,28 @@ def get_message_from_request(request):
     if 'message' in decoded_request:
         received_message = decoded_request['message'] 
         received_message['chat_id'] = received_message['from']['id'] # simply for easier reference
-        print(received_message.keys())
         text = received_message['text']
+        print(received_message)
 
         if text in ['fat','stupid','dumb']:
             user_id = received_message['chat_id']
             obj,created = Tgbot.objects.get_or_create(user_id=user_id)
+            obj.username = received_message['chat']['first_name']
             if text == 'fat':
+                command = Command.objects.filter(command_name=text)
+                command.update(count=F('count') + 1)
                 obj.fat += 1
                 obj.save()
             elif text == 'stupid':
+                command = Command.objects.filter(command_name=text)
+                command.update(count=F('count') + 1)
                 obj.stupid += 1
                 obj.save()
             elif text == 'dumb':
+                command = Command.objects.filter(command_name=text)
+                command.update(count=F('count') + 1)
                 obj.dumb += 1
                 obj.save()
-    print('recieved',received_message,'\n decided',decoded_request.keys(),decoded_request['update_id'])
     return received_message
 
 def send_messages(message, token):
@@ -53,7 +61,10 @@ def send_messages(message, token):
     post_message_url = "https://api.telegram.org/bot{0}/sendMessage".format(token)
 
     result_message = {}         # the response needs to contain just a chat_id and text field for  telegram to accept it
+    name = message['chat']['first_name']
     result_message['chat_id'] = message['chat_id']
+    result_message['reply_markup'] = {'keyboard': [[{'text':"fat"}],[{'text':'stupid'}],[{'text':'dumb'}]],'resize-keyboard':True,'one-time-keyboard':True}
+
     if 'fat' in message['text']:
         result_message['text'] = random.choice(jokes['fat'])
 
@@ -62,6 +73,9 @@ def send_messages(message, token):
 
     elif 'dumb' in message['text']:
         result_message['text'] = random.choice(jokes['dumb'])
+
+    elif '/start' in message['text']:
+        result_message['text'] = f'Hi {name}, Choose any of the given options'
 
     else:
         result_message['text'] = "I don't know any responses for that. If you're interested in yo mama jokes tell me fat, stupid or dumb."
@@ -85,3 +99,13 @@ class TelegramBotView(generic.View):
         send_messages(message, TELEGRAM_BOT_TOKEN)
 
         return HttpResponse()
+
+def home(request):
+    data = Tgbot.objects.all()
+    count = Command.objects.all()
+    context = {
+        'data' : data,
+        'count' : count
+    }
+
+    return render(request, 'index.html', context)
